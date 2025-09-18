@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="es" class="">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor de Gastos con Firebase</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --background: #f1f5f9; --foreground: #ffffff; --card: #ffffff; --text-primary: #0f172a; --text-secondary: #64748b;
+            --border: #e2e8f0; --input: #e2e8f0; --primary: #2563eb; --primary-hover: #1d4ed8;
+        }
+        html.dark {
+            --background: #0f172a; --foreground: #1e293b; --card: #1e293b; --text-primary: #f8fafc; --text-secondary: #94a3b8;
+            --border: #334155; --input: #334155; --primary: #3b82f6; --primary-hover: #60a5fa;
+        }
+        body { font-family: 'Inter', sans-serif; background-color: var(--background); color: var(--text-primary); }
+        .modal-overlay { transition: opacity 0.3s ease; }
+        .modal-container { transition: transform 0.3s ease, opacity 0.3s ease; }
+        .loader {
+            border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%;
+            width: 40px; height: 40px; animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes fade-in { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fade-in 0.3s ease-out forwards; }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+    <!-- Contenedor de Autenticación -->
+    <div id="auth-container" class="w-full max-w-md">
+        <div class="bg-[var(--foreground)] rounded-xl shadow-2xl p-8">
+            <h1 class="text-3xl font-bold text-center text-[var(--text-primary)] mb-2">Bienvenido</h1>
+            <p class="text-center text-[var(--text-secondary)] mb-8">Inicia sesión o regístrate para continuar</p>
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label for="email" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Correo Electrónico</label>
+                    <input type="email" id="email" required class="w-full px-4 py-2 bg-[var(--background)] border border-[var(--border)] rounded-lg focus:ring-2 focus:ring-[var(--primary)] transition">
+                </div>
+                <div>
+                    <label for="password" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Contraseña</label>
+                    <input type="password" id="password" required class="w-full px-4 py-2 bg-[var(--background)] border border-[var(--border)] rounded-lg focus:ring-2 focus:ring-[var(--primary)] transition">
+                </div>
+                <p id="auth-error" class="text-red-500 text-sm text-center h-4"></p>
+                <div class="flex flex-col sm:flex-row gap-3 pt-2">
+                    <button type="submit" id="login-btn" class="w-full bg-[var(--primary)] text-white font-bold py-3 px-4 rounded-lg hover:bg-[var(--primary-hover)] transition">Iniciar Sesión</button>
+                    <button type="button" id="register-btn" class="w-full bg-transparent border border-[var(--primary)] text-[var(--primary)] font-bold py-3 px-4 rounded-lg hover:bg-[var(--primary)] hover:text-white transition">Registrarse</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Contenedor Principal de la App (inicialmente oculto) -->
+    <main id="app-container" class="bg-[var(--foreground)] rounded-xl shadow-2xl w-full max-w-4xl p-6 md:p-8 relative hidden">
+        <div class="absolute top-4 right-4 flex items-center gap-2">
+            <button id="logout-btn" class="p-2 rounded-full text-[var(--text-secondary)] hover:bg-[var(--background)] transition-colors duration-300" title="Cerrar Sesión">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+            </button>
+            <button id="theme-toggle" class="p-2 rounded-full text-[var(--text-secondary)] hover:bg-[var(--background)] transition-colors duration-300">
+                <svg id="theme-icon-sun" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                <svg id="theme-icon-moon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+            </button>
+        </div>
+        
+        <header class="text-center mb-8 pt-8 sm:pt-0">
+            <h1 class="text-3xl md:text-4xl font-bold text-[var(--text-primary)]">Gestor de Gastos</h1>
+            <p id="user-email" class="text-[var(--text-secondary)] mt-2 text-sm"></p>
+        </header>
+
+        <!-- Resto del HTML de la app sin cambios -->
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-8">
+            <section class="md:col-span-2 bg-[var(--background)] p-6 rounded-lg">
+                <h2 class="text-2xl font-semibold mb-6 text-center text-[var(--text-primary)]">Ingresar Gasto</h2>
+                <form id="expense-form" class="space-y-4">
+                    <div><label for="date" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Fecha</label><input type="date" id="date" required class="w-full px-4 py-2 bg-[var(--foreground)] border border-[var(--border)] rounded-lg focus:ring-2 focus:ring-[var(--primary)] transition"></div>
+                    <div><label for="description" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Descripción</label><input type="text" id="description" placeholder="Ej: Café con amigos" required class="w-full px-4 py-2 bg-[var(--foreground)] border border-[var(--border)] rounded-lg focus:ring-2 focus:ring-[var(--primary)] transition"></div>
+                    <div><label for="amount" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Monto (ARS)</label><input type="number" id="amount" placeholder="Ej: 3500" min="0.01" step="0.01" required class="w-full px-4 py-2 bg-[var(--foreground)] border border-[var(--border)] rounded-lg focus:ring-2 focus:ring-[var(--primary)] transition"></div>
+                    <button type="submit" class="w-full bg-[var(--primary)] text-white font-bold py-3 px-4 rounded-lg hover:bg-[var(--primary-hover)] transition duration-300 transform hover:scale-105 flex items-center justify-center"><span id="add-btn-text">Agregar Gasto</span><div id="add-btn-spinner" class="loader !w-6 !h-6 !border-2 hidden"></div></button>
+                </form>
+            </section>
+            <section class="md:col-span-3 bg-[var(--background)] p-6 rounded-lg">
+                <h2 class="text-2xl font-semibold mb-4 text-center text-[var(--text-primary)]">Balance de Gastos</h2>
+                <div class="bg-[var(--foreground)] p-4 rounded-lg mb-4 text-center shadow-md"><p class="text-[var(--text-secondary)] text-sm">GASTO TOTAL</p><p id="total-balance" class="text-3xl font-bold text-red-500">$0.00</p></div>
+                <div class="flex items-center gap-2 mb-4"><label for="filter-date" class="text-sm font-medium text-[var(--text-secondary)] whitespace-nowrap">Filtrar por fecha:</label><input type="date" id="filter-date" class="w-full px-3 py-1.5 bg-[var(--foreground)] border border-[var(--border)] rounded-lg focus:ring-2 focus:ring-[var(--primary)] transition"><button id="clear-filter-btn" class="p-2 bg-[var(--foreground)] text-[var(--text-secondary)] border border-[var(--border)] rounded-lg hover:bg-[var(--background)] transition" title="Limpiar filtro"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z"/></svg></button></div>
+                <div id="expense-list-container" class="space-y-3 min-h-[16rem] flex items-center justify-center"><div class="loader"></div></div>
+                <button id="show-more-btn" class="w-full mt-4 text-[var(--primary)] font-semibold py-2 rounded-lg hover:bg-[var(--foreground)] transition hidden">Ver más</button>
+            </section>
+        </div>
+    </main>
+    
+    <!-- Modals -->
+    <div id="edit-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 hidden z-50 modal-overlay opacity-0"><div class="bg-[var(--card)] rounded-lg shadow-xl p-6 w-full max-w-md modal-container transform scale-95 opacity-0"><h2 class="text-2xl font-bold mb-4">Editar Gasto</h2><form id="edit-form" class="space-y-4"><input type="hidden" id="edit-id"><div><label for="edit-date" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Fecha</label><input type="date" id="edit-date" required class="w-full px-4 py-2 bg-[var(--background)] border border-[var(--border)] rounded-lg"></div><div><label for="edit-description" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Descripción</label><input type="text" id="edit-description" required class="w-full px-4 py-2 bg-[var(--background)] border border-[var(--border)] rounded-lg"></div><div><label for="edit-amount" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Monto (ARS)</label><input type="number" id="edit-amount" min="0.01" step="0.01" required class="w-full px-4 py-2 bg-[var(--background)] border border-[var(--border)] rounded-lg"></div><div class="mt-6 flex justify-end gap-3"><button type="button" id="cancel-edit-btn" class="bg-transparent border border-[var(--border)] text-[var(--text-primary)] font-bold py-2 px-4 rounded-lg hover:bg-[var(--background)] transition">Cancelar</button><button type="submit" class="bg-[var(--primary)] text-white font-bold py-2 px-4 rounded-lg hover:bg-[var(--primary-hover)] transition">Guardar Cambios</button></div></form></div></div>
+    <div id="confirm-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 hidden z-50 modal-overlay opacity-0"><div class="bg-[var(--card)] rounded-lg shadow-xl p-6 w-full max-w-sm modal-container transform scale-95 opacity-0 text-center"><h2 class="text-xl font-bold mb-2">Confirmar Eliminación</h2><p class="text-[var(--text-secondary)] mb-6">¿Estás seguro de que quieres eliminar este gasto?</p><div class="flex justify-center gap-4"><button type="button" id="cancel-delete-btn" class="w-full bg-transparent border border-[var(--border)] text-[var(--text-primary)] font-bold py-2 px-4 rounded-lg hover:bg-[var(--background)] transition">Cancelar</button><button type="button" id="confirm-delete-btn" class="w-full bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700 transition">Eliminar</button></div></div></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBqua3_9MhaJep2znKygdI15W-M2hjBRy8",
+            authDomain: "gastosadan.firebaseapp.com",
+            projectId: "gastosadan",
+            storageBucket: "gastosadan.appspot.com",
+            messagingSenderId: "627535873214",
+            appId: "1:627535873214:web:b3f417ef5d96d58df04aef"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // --- Selectores de Elementos ---
+        const authContainer = document.getElementById('auth-container');
+        const appContainer = document.getElementById('app-container');
+        const loginForm = document.getElementById('login-form');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const loginBtn = document.getElementById('login-btn');
+        const registerBtn = document.getElementById('register-btn');
+        const authError = document.getElementById('auth-error');
+        const logoutBtn = document.getElementById('logout-btn');
+        const userEmailEl = document.getElementById('user-email');
+        // El resto de selectores se mantienen igual
+        const docHtml = document.documentElement, themeToggle = document.getElementById('theme-toggle'), sunIcon = document.getElementById('theme-icon-sun'), moonIcon = document.getElementById('theme-icon-moon'), expenseForm = document.getElementById('expense-form'), descriptionInput = document.getElementById('description'), amountInput = document.getElementById('amount'), dateInput = document.getElementById('date'), expenseListContainer = document.getElementById('expense-list-container'), totalBalanceEl = document.getElementById('total-balance'), showMoreBtn = document.getElementById('show-more-btn'), filterDateInput = document.getElementById('filter-date'), clearFilterBtn = document.getElementById('clear-filter-btn'), addBtnText = document.getElementById('add-btn-text'), addBtnSpinner = document.getElementById('add-btn-spinner'), editModal = document.getElementById('edit-modal'), editForm = document.getElementById('edit-form'), cancelEditBtn = document.getElementById('cancel-edit-btn'), editIdInput = document.getElementById('edit-id'), editDescriptionInput = document.getElementById('edit-description'), editDateInput = document.getElementById('edit-date'), editAmountInput = document.getElementById('edit-amount'), confirmModal = document.getElementById('confirm-modal'), cancelDeleteBtn = document.getElementById('cancel-delete-btn'), confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+        
+        let currentUser = null;
+        let gastosCollectionRef;
+        let allExpenses = [];
+        let isShowingAll = false;
+        const itemsToShowInitially = 3;
+        let expenseToDeleteId = null;
+
+        // --- Lógica de Autenticación ---
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                // Preparamos la referencia a la colección de gastos de ESTE usuario
+                gastosCollectionRef = collection(db, "users", currentUser.uid, "gastos");
+                authContainer.classList.add('hidden');
+                appContainer.classList.remove('hidden');
+                userEmailEl.textContent = `Sesión iniciada como: ${user.email}`;
+                fetchAndRenderExpenses();
+            } else {
+                currentUser = null;
+                authContainer.classList.remove('hidden');
+                appContainer.classList.add('hidden');
+                // Limpiamos la lista para que no se vean datos de sesiones anteriores
+                expenseListContainer.innerHTML = "";
+                totalBalanceEl.textContent = formatCurrency(0);
+            }
+        });
+
+        loginForm.addEventListener('submit', (e) => e.preventDefault());
+
+        loginBtn.addEventListener('click', async () => {
+            authError.textContent = '';
+            try {
+                await signInWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
+            } catch (error) {
+                authError.textContent = 'Error: correo o contraseña incorrectos.';
+                console.error("Login error: ", error.code);
+            }
+        });
+
+        registerBtn.addEventListener('click', async () => {
+            authError.textContent = '';
+            try {
+                await createUserWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
+            } catch (error) {
+                if(error.code === 'auth/email-already-in-use') {
+                    authError.textContent = 'Error: el correo ya está en uso.';
+                } else if (error.code === 'auth/weak-password') {
+                     authError.textContent = 'Error: la contraseña debe tener al menos 6 caracteres.';
+                } else {
+                    authError.textContent = 'Error al registrar la cuenta.';
+                }
+                console.error("Register error: ", error.code);
+            }
+        });
+        
+        logoutBtn.addEventListener('click', async () => {
+            await signOut(auth);
+        });
+
+        // --- Lógica de la App (adaptada para datos de usuario) ---
+        const formatCurrency = (amount) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(amount);
+
+        const fetchAndRenderExpenses = async () => {
+            if (!currentUser) return;
+            expenseListContainer.innerHTML = `<div class="loader"></div>`;
+            try {
+                const q = query(gastosCollectionRef, orderBy("date", "desc"));
+                const querySnapshot = await getDocs(q);
+                allExpenses = [];
+                querySnapshot.forEach((doc) => {
+                    allExpenses.push({ id: doc.id, ...doc.data() });
+                });
+                renderExpenses();
+            } catch (error) {
+                console.error("Error fetching expenses: ", error);
+                expenseListContainer.innerHTML = `<p class="text-center text-red-500">Error al cargar los datos.<br>Revisa las Reglas de Seguridad de Firestore.</p>`;
+            }
+        };
+
+        const renderExpenses = () => {
+             expenseListContainer.innerHTML = '';
+            const dateFilter = filterDateInput.value;
+            let filteredExpenses = dateFilter ? allExpenses.filter(e => e.date === dateFilter) : [...allExpenses];
+
+            if (filteredExpenses.length === 0) {
+                expenseListContainer.innerHTML = `<p class="text-center text-[var(--text-secondary)] mt-8">${dateFilter ? 'No hay gastos para esta fecha.' : 'Aún no has ingresado gastos.'}</p>`;
+            } else {
+                const expensesToDisplay = isShowingAll ? filteredExpenses : filteredExpenses.slice(0, itemsToShowInitially);
+                expensesToDisplay.forEach(expense => {
+                    const expenseItem = document.createElement('div');
+                    expenseItem.className = 'flex justify-between items-center bg-[var(--foreground)] p-3 rounded-lg shadow-sm animate-fade-in';
+                    expenseItem.dataset.id = expense.id;
+                    expenseItem.innerHTML = `
+                        <div class="flex flex-col mr-2 overflow-hidden"><span class="font-medium truncate">${expense.description}</span><span class="text-xs text-[var(--text-secondary)]">${new Date(expense.date).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}</span></div>
+                        <div class="flex items-center gap-2 flex-shrink-0"><span class="font-semibold text-right">${formatCurrency(expense.amount)}</span><button class="edit-btn p-1.5 text-[var(--text-secondary)] hover:text-blue-500 hover:bg-[var(--background)] rounded-md transition"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708 0zM11.207 2.5 13.5 4.793 4.207 14H2v-2.207L11.207 2.5z"/></svg></button><button class="delete-btn p-1.5 text-[var(--text-secondary)] hover:text-red-500 hover:bg-[var(--background)] rounded-md transition"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0v-6z"/><path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg></button></div>`;
+                    expenseListContainer.appendChild(expenseItem);
+                });
+            }
+            totalBalanceEl.textContent = formatCurrency(allExpenses.reduce((sum, exp) => sum + exp.amount, 0));
+            showMoreBtn.classList.toggle('hidden', isShowingAll || filteredExpenses.length <= itemsToShowInitially);
+        };
+        
+        const openModal = (modal) => { modal.classList.remove('hidden'); setTimeout(() => { modal.classList.add('opacity-100'); modal.querySelector('.modal-container').classList.remove('scale-95', 'opacity-0'); }, 10); };
+        const closeModal = (modal) => { modal.classList.remove('opacity-100'); modal.querySelector('.modal-container').classList.add('scale-95', 'opacity-0'); setTimeout(() => modal.classList.add('hidden'), 300); };
+        
+        expenseForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if(!currentUser) return;
+            addBtnText.classList.add('hidden'); addBtnSpinner.classList.remove('hidden');
+            try {
+                await addDoc(gastosCollectionRef, { description: descriptionInput.value.trim(), amount: parseFloat(amountInput.value), date: dateInput.value });
+                expenseForm.reset(); dateInput.valueAsDate = new Date(); descriptionInput.focus(); isShowingAll = false; await fetchAndRenderExpenses();
+            } catch (error) { console.error("Error adding document: ", error); alert('Hubo un error al agregar el gasto.');
+            } finally { addBtnText.classList.remove('hidden'); addBtnSpinner.classList.add('hidden'); }
+        });
+
+        expenseListContainer.addEventListener('click', (e) => {
+            const expenseItem = e.target.closest('[data-id]'); if (!expenseItem) return;
+            const expenseId = expenseItem.dataset.id; const expense = allExpenses.find(exp => exp.id === expenseId); if (!expense) return;
+            if (e.target.closest('.delete-btn')) { expenseToDeleteId = expenseId; openModal(confirmModal); } 
+            else if (e.target.closest('.edit-btn')) {
+                editIdInput.value = expense.id; editDescriptionInput.value = expense.description; editDateInput.value = expense.date; editAmountInput.value = expense.amount;
+                openModal(editModal);
+            }
+        });
+        
+        editForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = editIdInput.value; const gastoRef = doc(db, "users", currentUser.uid, "gastos", id);
+            try {
+                await updateDoc(gastoRef, { description: editDescriptionInput.value.trim(), date: editDateInput.value, amount: parseFloat(editAmountInput.value) });
+                await fetchAndRenderExpenses(); closeModal(editModal);
+            } catch (error) { console.error("Error updating document: ", error); alert('Hubo un error al actualizar el gasto.'); }
+        });
+        
+        confirmDeleteBtn.addEventListener('click', async () => {
+            if (expenseToDeleteId) {
+                try {
+                    await deleteDoc(doc(db, "users", currentUser.uid, "gastos", expenseToDeleteId));
+                    expenseToDeleteId = null; await fetchAndRenderExpenses();
+                } catch (error) { console.error("Error removing document: ", error); alert('Hubo un error al eliminar el gasto.');
+                } finally { closeModal(confirmModal); }
+            }
+        });
+
+        cancelEditBtn.addEventListener('click', () => closeModal(editModal));
+        cancelDeleteBtn.addEventListener('click', () => { expenseToDeleteId = null; closeModal(confirmModal); });
+        showMoreBtn.addEventListener('click', () => { isShowingAll = true; renderExpenses(); });
+        filterDateInput.addEventListener('input', () => { isShowingAll = true; renderExpenses(); });
+        clearFilterBtn.addEventListener('click', () => { filterDateInput.value = ''; isShowingAll = false; renderExpenses(); });
+        const applyTheme = (isDark) => { if (isDark) { docHtml.classList.add('dark'); sunIcon.classList.remove('hidden'); moonIcon.classList.add('hidden'); } else { docHtml.classList.remove('dark'); sunIcon.classList.add('hidden'); moonIcon.classList.remove('hidden'); } };
+        themeToggle.addEventListener('click', () => { const isDark = docHtml.classList.toggle('dark'); localStorage.setItem('theme', isDark ? 'dark' : 'light'); applyTheme(isDark); });
+        const savedTheme = localStorage.getItem('theme'); const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches; applyTheme(savedTheme === 'dark' || (savedTheme === null && systemPrefersDark));
+        dateInput.valueAsDate = new Date();
+    </script>
+</body>
+</html>
+
