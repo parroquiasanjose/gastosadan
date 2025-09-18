@@ -79,7 +79,7 @@
             <section class="md:col-span-2 bg-[var(--background)] p-6 rounded-lg">
                 <h2 class="text-2xl font-semibold mb-6 text-center text-[var(--text-primary)]">Ingresar Gasto</h2>
                 <form id="expense-form" class="space-y-4">
-                    <div><label for="date" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Fecha</label><input type="date" id="date" required class="w-full px-4 py-2 bg-[var(--foreground)] border border-[var(--border)] rounded-lg focus:ring-2 focus:ring-[var(--primary)] transition"></div>
+                    <div><label for="date" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Fecha</label><input type="date" id="date" required readonly class="w-full px-4 py-2 bg-[var(--background)] border border-[var(--border)] rounded-lg focus:ring-2 focus:ring-[var(--primary)] transition cursor-not-allowed"></div>
                     <div><label for="category-select" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Categoría</label><select id="category-select" required class="w-full px-4 py-2 bg-[var(--foreground)] border border-[var(--border)] rounded-lg focus:ring-2 focus:ring-[var(--primary)] transition"></select></div>
                     <div><label for="note" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Nota (Opcional)</label><input type="text" id="note" placeholder="Ej: Almuerzo con clientes" class="w-full px-4 py-2 bg-[var(--foreground)] border border-[var(--border)] rounded-lg focus:ring-2 focus:ring-[var(--primary)] transition"></div>
                     <div><label for="amount" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Monto (ARS)</label><input type="number" id="amount" placeholder="Ej: 3500" min="1" step="1" required class="w-full px-4 py-2 bg-[var(--foreground)] border border-[var(--border)] rounded-lg focus:ring-2 focus:ring-[var(--primary)] transition"></div>
@@ -353,4 +353,5 @@
     </script>
 </body>
 </html>
+
 
